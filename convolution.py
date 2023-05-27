@@ -1,7 +1,5 @@
-from tkinter import image_names
 import numpy as np
 from matplotlib import image as img
-from matplotlib import pyplot as plt
 from math import exp
 import cv2
 import sys
@@ -50,7 +48,7 @@ def to_grayscale(image_rgb):
     image_grayscale = []
     for row in image_rgb:
         grayscale_line = []
-        for r, g, b in row:
+        for r, g, b, a in row:
             grayscale = 0.299*r + 0.587*g + 0.114*b
             grayscale_line.append(grayscale)
         image_grayscale.append(grayscale_line)
@@ -157,42 +155,44 @@ def convolution2D(image, kernel, padding=1):
     return output
 
 
-def gaussian_blur(image_path, iterations=1,output_file_path='./', output_file_name = 'output'):
+def gaussian_blur(image, iterations=1,output_file_path='./', output_file_name = 'gaussian'):
     vector = gaussian_vector(3,2)
     kernel = normalized_gaussian_kernel(vector)
-    image = processImage(image_path)
+    
+    color_channels = get_individual_color_channels(image)
     for i in range(iterations):
-        image = convolution2D(image, kernel)
+        for color in range(len(color_channels)):
+            color_channels[color] = convolution2D(color_channels[color], kernel)
+        image = unite_color_channels([color_channels[2], color_channels[1], color_channels[0]])
         output_path = output_file_path + '\\' + output_file_name + str(i) + '.jpg'
-        cv2.imwrite(output_path, image)
+        cv2.imwrite(output_path, (image*255).astype(np.uint8))
     return image
 
 
-def medianblur(image_path, iterations=1, output_file_path='./', output_file_name = 'output'):
+def medianblur(image, iterations=1, output_file_path='./', output_file_name = 'median'):
     MEDIAN_KERNEL = np.array([[1/9, 1/9, 1/9], [1/9, 1/9, 1/9], [1/9, 1/9, 1/9]])
-    image = processImage(image_path)
     color_channels = get_individual_color_channels(image)
     for i in range(iterations):
         for color in range(len(color_channels)):
             color_channels[color] = convolution2D(color_channels[color], MEDIAN_KERNEL)
         image = unite_color_channels([color_channels[2], color_channels[1], color_channels[0]])
         output_path = output_file_path + '\\' + output_file_name + str(i) + '.jpg'
-        cv2.imwrite(output_path, image)
+        cv2.imwrite(output_path, (image*255).astype(np.uint8))
     return image
 
 
-def sobel_outline(image_path, output_file_path='./', output_file_name = 'sobel'):
+def sobel_outline(image, output_file_path='./', output_file_name = 'sobel'):
     SOBEL_GY_KERNEL = [[1, 2, 1], [0, 0, 0], [-1, -2, -1]]
     SOBEL_GX_KERNEL = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
-    image = processImage(image_path)
+
     image = to_grayscale(image)
 
     imageGx = convolution2D(image, SOBEL_GX_KERNEL)
     imageGy = convolution2D(image, SOBEL_GY_KERNEL)
     output_path = output_file_path + '\\' + 'gxsobel' + '.jpg'
-    cv2.imwrite(output_path, np.array(imageGx))
+    cv2.imwrite(output_path, (np.array(imageGx)*255).astype(np.uint8))
     output_path = output_file_path + '\\' + 'gysobel' + '.jpg'
-    cv2.imwrite(output_path, np.array(imageGy))
+    cv2.imwrite(output_path, (np.array(imageGy)*255).astype(np.uint8))
 
     final_image = []
     for i in range(len(imageGy)-1):
@@ -201,22 +201,21 @@ def sobel_outline(image_path, output_file_path='./', output_file_name = 'sobel')
             final_image_line.append(np.sqrt(imageGx[i][j]**2+imageGy[i][j]**2))
         final_image.append(final_image_line)
     output_path = output_file_path + '\\' + output_file_name + '.jpg'
-    cv2.imwrite(output_path, np.array(final_image))
+    cv2.imwrite(output_path, (np.array(final_image)*255).astype(np.uint8))
     return image
 
 
-def prewitt_outline(image_path, output_file_path='./', output_file_name = 'PREWITT1'):
+def prewitt_outline(image, output_file_path='./', output_file_name = 'PREWITT1'):
     PREWITT_GY_KERNEL = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]]
     PREWITT_GX_KERNEL = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]
-    image = processImage(image_path)
     image = to_grayscale(image)
 
     imageGx = convolution2D(image, PREWITT_GX_KERNEL)
     imageGy = convolution2D(image, PREWITT_GY_KERNEL)
     output_path = output_file_path + '\\' + 'gx' + '.jpg'
-    cv2.imwrite(output_path, np.array(imageGx))
+    cv2.imwrite(output_path, (np.array(imageGx)*255).astype(np.uint8))
     output_path = output_file_path + '\\' + 'gy' + '.jpg'
-    cv2.imwrite(output_path, np.array(imageGy))
+    cv2.imwrite(output_path, (np.array(imageGy)*255).astype(np.uint8))
     
     final_image = []
     for i in range(len(imageGy)-1):
@@ -225,6 +224,5 @@ def prewitt_outline(image_path, output_file_path='./', output_file_name = 'PREWI
             final_image_line.append(np.sqrt(imageGx[i][j]**2+imageGy[i][j]**2))
         final_image.append(final_image_line)
     output_path = output_file_path + '\\' + output_file_name + '.jpg'
-    cv2.imwrite(output_path, np.array(final_image))
+    cv2.imwrite(output_path, (np.array(final_image)*255).astype(np.uint8))
     return image
-
